@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Tree Canopy Oklahoma - Geospatial Analysis Dashboard</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/light/main.css">
+  <script src="https://js.arcgis.com/4.28/"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #f3f4f6;
+      overflow: hidden;
+    }
+
+    .dashboard-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Header - OU CSA style */
+    #header {
+      background: #841617;
+      color: #fff;
+      padding: 14px 32px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      border-bottom: 4px solid #b3b3b3;
+    }
+
+    #header-inner {
+      width: 80%;
+      max-width: 1600px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    #header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    #header .subtitle {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      opacity: 0.9;
+    }
+
+    /* Main Content */
+    .main-content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      width: 80%;
+      max-width: 1600px;
+      margin: 0 auto;
+      background: #f9fafb;
+      border-left: 1px solid #e5e7eb;
+      border-right: 1px solid #e5e7eb;
+    }
+
+    /* Control Panel */
+    #controlPanel {
+      width: 360px;
+      background: #ffffff;
+      border-right: 1px solid #dee2e6;
+      overflow-y: auto;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .panel-section {
+      padding: 18px 20px;
+      border-bottom: 1px solid #e3e6ea;
+    }
+
+    .panel-section h2 {
+      margin: 0 0 10px 0;
+      font-size: 17px;
+      color: #841617;
+      font-weight: 600;
+    }
+
+    .panel-section p {
+      margin: 0 0 14px 0;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.5;
+    }
+
+    /* Map Container */
+    #mapContainer {
+      flex: 1;
+      position: relative;
+      background: #e5e7eb;
+    }
+
+    #viewDiv {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Loading */
+    #loadingIndicator {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.96);
+      padding: 20px 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+      z-index: 1000;
+      text-align: center;
+      min-width: 220px;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #841617;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Results Panel */
+    #resultsPanel {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: white;
+      padding: 18px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      max-width: 400px;
+      max-height: 400px;
+      overflow-y: auto;
+      z-index: 10;
+      display: none;
+    }
+
+    #resultsPanel h3 {
+      margin: 0 0 15px 0;
+      color: #841617;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    /* Buttons - OU crimson */
+    button {
+      background: #841617;
+      color: #FFFDD0;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      margin: 5px 0;
+      width: 100%;
+      transition: all 0.2s ease;
+    }
+
+    button:hover {
+      background: #990000;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(132, 22, 23, 0.35);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    button:disabled {
+      background: #cbd3da;
+      cursor: not-allowed;
+      transform: none;
+      color: #666;
+      box-shadow: none;
+    }
+
+    button.active {
+      background: #990000;
+      box-shadow: 0 0 0 3px rgba(153, 0, 0, 0.3);
+    }
+
+    button.secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    button.secondary:hover {
+      background: #5a6268;
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #333;
+      font-size: 13px;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #841617;
+      box-shadow: 0 0 0 3px rgba(132, 22, 23, 0.15);
+    }
+
+    /* Range Slider - OU Crimson */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: #ddd;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #841617;
+      cursor: pointer;
+      border: 2px solid white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #990000;
+      transform: scale(1.05);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #841617;
+      cursor: pointer;
+      border: 2px solid white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    input[type="range"]::-moz-range-thumb:hover {
+      background: #990000;
+    }
+
+    /* Info Items */
+    .info-item {
+      margin: 10px 0;
+      padding: 10px 12px;
+      background: #f8f9fa;
+      border-left: 3px solid #841617;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .info-label {
+      font-weight: 600;
+      color: #841617;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    /* Close Button */
+    .close-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .close-btn:hover {
+      background: #c82333;
+    }
+
+    /* Instructions */
+    .instruction-box {
+      background: #fff5f5;
+      border: 1px solid #841617;
+      border-radius: 6px;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 13px;
+      color: #841617;
+      display: none;
+    }
+
+    .instruction-box.active {
+      display: block;
+    }
+
+    /* Layer Info Box */
+    .layer-info-box {
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+
+    .layer-info-box strong {
+      color: #841617;
+    }
+
+    .layer-info-box div {
+      margin: 4px 0;
+    }
+
+    .status-message {
+      padding: 8px 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-size: 12px;
+    }
+
+    .status-success {
+      background: #d4edda;
+      border: 1px solid #28a745;
+      color: #155724;
+    }
+
+    .status-error {
+      background: #f8d7da;
+      border: 1px solid #dc3545;
+      color: #721c24;
+    }
+
+    /* Footer - OU-style */
+    #footer {
+      background: #841617;
+      color: #FFFDD0;
+      padding: 14px 32px 18px;
+      box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.12);
+      border-top: 3px solid #b3b3b3;
+    }
+
+    #footer-inner {
+      width: 80%;
+      max-width: 1600px;
+      margin: 0 auto;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    #footer-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px 24px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255, 253, 208, 0.4);
+      margin-bottom: 6px;
+    }
+
+    #footer-bottom {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 6px 24px;
+    }
+
+    #footer p {
+      margin: 0;
+    }
+
+    #footer a {
+      color: #FFFDD0;
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+
+    #footer a:hover {
+      opacity: 0.85;
+    }
+
+    .footer-highlight {
+      font-weight: 600;
+    }
+
+    .footer-muted {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dashboard-container">
+    <!-- Header -->
+    <div id="header">
+      <div id="header-inner">
+        <h1>🌳 Tree Canopy Oklahoma</h1>
+        <div class="subtitle">Geospatial Analysis Dashboard · Center for Spatial Analysis</div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Control Panel -->
+      <div id="controlPanel">
+        <div class="panel-section">
+          <h2>🔍 Identify Tool</h2>
+          <p>Click on the map to inspect tree canopy values at specific locations.</p>
+          <button id="identifyBtn">🎯 Activate Identify Mode</button>
+          <div id="identifyInstructions" class="instruction-box">
+            ✓ Identify mode active. Click anywhere on the map to view pixel information.
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h2>📐 Spatial Query</h2>
+          <p>Draw a rectangle to summarize features within a selected area.</p>
+          <button id="drawRectBtn">▭ Draw Query Area</button>
+          <button id="queryExtentBtn" disabled>📊 Execute Spatial Query</button>
+        </div>
+
+        <div class="panel-section">
+          <h2>🔎 Attribute Query</h2>
+          <p>Explore canopy conditions by specifying a pixel value range.</p>
+
+          <div class="form-group">
+            <label for="minValue">Minimum Pixel Value:</label>
+            <input type="number" id="minValue" value="0" min="0" max="255">
+          </div>
+
+          <div class="form-group">
+            <label for="maxValue">Maximum Pixel Value:</label>
+            <input type="number" id="maxValue" value="100" min="0" max="255">
+          </div>
+
+          <button id="queryAttrBtn">🔍 Query by Attributes</button>
+        </div>
+
+        <div class="panel-section">
+          <h2>🗺️ Map Controls</h2>
+          <button id="toggleLayerBtn">👁️ Hide Tree Canopy Layer</button>
+          <button id="clearBtn" class="secondary">🗑️ Clear All Graphics</button>
+          <button id="resetViewBtn" class="secondary">🏠 Reset View to Oklahoma</button>
+
+          <div class="form-group" style="margin-top: 14px;">
+            <label for="opacitySlider">Layer Opacity: <span id="opacityValue">80%</span></label>
+            <input type="range" id="opacitySlider" min="0" max="100" value="80" style="width: 100%; cursor: pointer;">
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="layer-info-box">
+            <div><strong>Service:</strong> Tree_Canopy_OK_10m</div>
+            <div><strong>Type:</strong> Cached Tile Service</div>
+            <div><strong>Spatial Reference:</strong> Web Mercator (WKID 102100/3857)</div>
+            <div><strong>Resolution:</strong> 10&nbsp;meters</div>
+            <div><strong>Zoom Levels:</strong> 0–24</div>
+            <div style="margin-top: 8px; padding: 8px; background: #e7f3e7; border-radius: 4px; font-size: 11px;">
+              <strong>✓ Compatible:</strong> This service works with standard ArcGIS Online basemaps.
+            </div>
+          </div>
+          <div id="statusMessage"></div>
+        </div>
+      </div>
+
+      <!-- Map Container -->
+      <div id="mapContainer">
+        <div id="viewDiv"></div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator">
+          <div class="spinner"></div>
+          <div style="color: #841617; font-weight: 500;">Loading Tree Canopy Data...</div>
+        </div>
+
+        <!-- Results Panel -->
+        <div id="resultsPanel">
+          <button class="close-btn" onclick="closeResults()">✕</button>
+          <h3>Query Results</h3>
+          <div id="results"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div id="footer">
+      <div id="footer-inner">
+        <div id="footer-top">
+          <p class="footer-highlight">
+            Center for Spatial Analysis · College of Atmospheric and Geographic Sciences
+          </p>
+          <p class="footer-muted">
+            The University of Oklahoma · Norman, Oklahoma, USA
+          </p>
+        </div>
+        <div id="footer-bottom">
+          <p>
+            Learn more:
+            <a href="https://www.ou.edu/ags/csa" target="_blank" rel="noopener">Center for Spatial Analysis</a>
+            ·
+            <a href="https://storymaps.arcgis.com/stories/7e589eed27c441a89677ed77f1bc5e6b"
+               target="_blank" rel="noopener">
+              Oklahoma Geospatial Story Map
+            </a>
+          </p>
+          <p class="footer-muted">
+            © 2025 The Board of Regents of the University of Oklahoma. All rights reserved.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function closeResults() {
+      document.getElementById("resultsPanel").style.display = "none";
+    }
+
+    function showStatus(message, type) {
+      const statusDiv = document.getElementById("statusMessage");
+      statusDiv.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
+      setTimeout(() => {
+        statusDiv.innerHTML = "";
+      }, 5000);
+    }
+
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/TileLayer",
+      "esri/widgets/Home",
+      "esri/widgets/LayerList",
+      "esri/rest/identify",
+      "esri/rest/support/IdentifyParameters",
+      "esri/Graphic",
+      "esri/layers/GraphicsLayer",
+      "esri/views/draw/Draw"
+    ], function (
+      Map,
+      MapView,
+      TileLayer,
+      Home,
+      LayerList,
+      identify,
+      IdentifyParameters,
+      Graphic,
+      GraphicsLayer,
+      Draw
+    ) {
+      document.getElementById("loadingIndicator").style.display = "block";
+
+      // ✅ Your service URL - now compatible with Web Mercator basemaps!
+      const serviceUrl =
+        "https://tiles.arcgis.com/tiles/cTNi34MxOdcfum3A/arcgis/rest/services/TreeCanopy_Oklahoma_10m_WGS84/MapServer";
+
+      const treeCanopyLayer = new TileLayer({
+        url: serviceUrl,
+        title: "Tree Canopy Oklahoma 10m",
+        opacity: 0.8,
+        visible: true
+      });
+
+      const graphicsLayer = new GraphicsLayer({
+        title: "Selection",
+        listMode: "hide"
+      });
+
+      // ✅ Now we CAN use a basemap! Web Mercator is compatible
+      const map = new Map({
+        basemap: "topo-vector",
+        layers: [treeCanopyLayer, graphicsLayer]
+      });
+
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-97.5, 35.5],
+        zoom: 7,
+        constraints: {
+          minZoom: 5,
+          maxZoom: 18
+        }
+      });
+
+      // Add widgets
+      const homeBtn = new Home({ view });
+      view.ui.add(homeBtn, "top-left");
+
+      const layerList = new LayerList({
+        view: view,
+        listItemCreatedFunction: (event) => {
+          if (event.item.layer.type !== "graphics") {
+            event.item.panel = {
+              content: "legend",
+              open: false
+            };
+          }
+        }
+      });
+      view.ui.add(layerList, "top-right");
+
+      const draw = new Draw({ view });
+
+      let identifyMode = false;
+      let drawAction = null;
+      let currentGeometry = null;
+      let initialExtent = null;
+
+      // View ready
+      view.when(() => {
+        console.log("✅ Map view loaded");
+        console.log("Spatial Reference:", view.spatialReference.wkid);
+        showStatus("Map loaded successfully.", "success");
+        document.getElementById("loadingIndicator").style.display = "none";
+      }).catch((error) => {
+        console.error("❌ Map error:", error);
+        showStatus("Error loading map: " + error.message, "error");
+        document.getElementById("loadingIndicator").style.display = "none";
+      });
+
+      // Layer load
+      treeCanopyLayer.load().then(() => {
+        console.log("✅ Tree Canopy TileLayer loaded");
+        console.log("Layer spatial reference:", treeCanopyLayer.spatialReference.wkid);
+        console.log("Layer visible:", treeCanopyLayer.visible);
+        console.log("Layer opacity:", treeCanopyLayer.opacity);
+        
+        if (treeCanopyLayer.fullExtent) {
+          initialExtent = treeCanopyLayer.fullExtent.clone();
+          view.goTo(initialExtent.expand(1.1)).catch((err) => {
+            console.error("goTo error:", err);
+          });
+        }
+        showStatus("Tree canopy layer loaded successfully!", "success");
+      }).catch((error) => {
+        console.error("❌ Layer load error:", error);
+        showStatus("Layer load error: " + error.message, "error");
+      });
+
+      // Identify button
+      document.getElementById("identifyBtn").addEventListener("click", () => {
+        identifyMode = !identifyMode;
+        const btn = document.getElementById("identifyBtn");
+        const instructions = document.getElementById("identifyInstructions");
+
+        if (identifyMode) {
+          btn.classList.add("active");
+          btn.textContent = "🎯 Identify Active - Click Map";
+          instructions.classList.add("active");
+          view.container.style.cursor = "crosshair";
+        } else {
+          btn.classList.remove("active");
+          btn.textContent = "🎯 Activate Identify Mode";
+          instructions.classList.remove("active");
+          view.container.style.cursor = "default";
+        }
+      });
+
+      // Map click for identify
+      view.on("click", (event) => {
+        if (!identifyMode) return;
+
+        event.stopPropagation();
+
+        const params = new IdentifyParameters({
+          geometry: event.mapPoint,
+          mapExtent: view.extent,
+          width: view.width,
+          height: view.height,
+          tolerance: 3,
+          layerOption: "all"
+        });
+
+        identify.identify(serviceUrl, params)
+          .then((response) => {
+            if (response.results.length > 0) {
+              displayIdentifyResults(response.results, event.mapPoint);
+            } else {
+              displayNoResults("No features found at this location.");
+            }
+          })
+          .catch((error) => {
+            console.error("Identify error:", error);
+            displayNoResults("Identify error: " + error.message);
+          });
+      });
+
+      // Draw rectangle button
+      document.getElementById("drawRectBtn").addEventListener("click", () => {
+        graphicsLayer.removeAll();
+        drawAction = draw.create("rectangle");
+
+        drawAction.on("draw-complete", (event) => {
+          currentGeometry = event.geometry;
+          const graphic = new Graphic({
+            geometry: currentGeometry,
+            symbol: {
+              type: "simple-fill",
+              color: [255, 255, 0, 0.2],
+              outline: {
+                color: [255, 255, 0],
+                width: 2
+              }
+            }
+          });
+          graphicsLayer.add(graphic);
+          document.getElementById("queryExtentBtn").disabled = false;
+        });
+      });
+
+      // Spatial query button
+      document.getElementById("queryExtentBtn").addEventListener("click", () => {
+        if (!currentGeometry) return;
+
+        const params = new IdentifyParameters({
+          geometry: currentGeometry,
+          mapExtent: view.extent,
+          width: view.width,
+          height: view.height,
+          tolerance: 0,
+          layerOption: "all",
+          returnGeometry: true
+        });
+
+        identify.identify(serviceUrl, params)
+          .then((response) => {
+            if (response.results.length > 0) {
+              displayQueryResults(response.results, "Spatial Query");
+            } else {
+              displayNoResults("No features in the selected area.");
+            }
+          })
+          .catch((error) => {
+            console.error("Query error:", error);
+            displayNoResults("Spatial query not fully supported on tile services. Try using Identify tool on specific points.");
+          });
+      });
+
+      // Attribute query button (info only)
+      document.getElementById("queryAttrBtn").addEventListener("click", () => {
+        const minValue = parseFloat(document.getElementById("minValue").value) || 0;
+        const maxValue = parseFloat(document.getElementById("maxValue").value) || 255;
+
+        displayNoResults(
+          `Attribute queries are not supported on cached tile services.<br>
+           Pixel value range entered: ${minValue}–${maxValue}.<br>
+           Use the Identify tool to inspect individual pixel values.`
+        );
+      });
+
+      // Clear button
+      document.getElementById("clearBtn").addEventListener("click", () => {
+        graphicsLayer.removeAll();
+        currentGeometry = null;
+        document.getElementById("queryExtentBtn").disabled = true;
+        closeResults();
+      });
+
+      // Reset view button
+      document.getElementById("resetViewBtn").addEventListener("click", () => {
+        if (initialExtent) {
+          view.goTo(initialExtent.expand(1.1)).catch((err) => {
+            console.error("Reset goTo error:", err);
+          });
+        } else {
+          view.goTo({
+            center: [-97.5, 35.5],
+            zoom: 7
+          });
+        }
+      });
+
+      // Opacity slider
+      document.getElementById("opacitySlider").addEventListener("input", (event) => {
+        const opacity = event.target.value / 100;
+        treeCanopyLayer.opacity = opacity;
+        document.getElementById("opacityValue").textContent = event.target.value + "%";
+      });
+
+      // Toggle layer visibility
+      document.getElementById("toggleLayerBtn").addEventListener("click", () => {
+        treeCanopyLayer.visible = !treeCanopyLayer.visible;
+        const btn = document.getElementById("toggleLayerBtn");
+
+        if (treeCanopyLayer.visible) {
+          btn.textContent = "👁️ Hide Tree Canopy Layer";
+          btn.classList.remove("secondary");
+          showStatus("Tree canopy layer is now visible.", "success");
+        } else {
+          btn.textContent = "👁️ Show Tree Canopy Layer";
+          btn.classList.add("secondary");
+          showStatus("Tree canopy layer is now hidden.", "success");
+        }
+      });
+
+      // -------- Helper renderers --------
+      function displayIdentifyResults(results, mapPoint) {
+        let html = `<div class="info-item">
+          <span class="info-label">Location</span>
+          Lat: ${mapPoint.latitude.toFixed(6)}<br>
+          Lon: ${mapPoint.longitude.toFixed(6)}
+        </div>`;
+
+        results.forEach((result) => {
+          html += `<div class="info-item">
+            <span class="info-label">Layer ${result.layerId}: ${result.layerName}</span>`;
+
+          if (result.feature && result.feature.attributes) {
+            const attrs = result.feature.attributes;
+            for (let key in attrs) {
+              html += `<br>${key}: ${attrs[key]}`;
+            }
+          }
+
+          html += `</div>`;
+        });
+
+        const marker = new Graphic({
+          geometry: mapPoint,
+          symbol: {
+            type: "simple-marker",
+            color: [255, 0, 0],
+            size: 10,
+            outline: {
+              color: [255, 255, 255],
+              width: 2
+            }
+          }
+        });
+        graphicsLayer.add(marker);
+
+        document.getElementById("results").innerHTML = html;
+        document.getElementById("resultsPanel").style.display = "block";
+      }
+
+      function displayQueryResults(features, queryType) {
+        let html = `<div class="info-item">
+          <span class="info-label">${queryType}</span>
+          Found ${features.length} feature(s)
+        </div>`;
+
+        features.slice(0, 10).forEach((feature, index) => {
+          html += `<div class="info-item">
+            <span class="info-label">Feature ${index + 1}</span>`;
+
+          if (feature.feature && feature.feature.attributes) {
+            const attrs = feature.feature.attributes;
+            for (let key in attrs) {
+              html += `<br>${key}: ${attrs[key]}`;
+            }
+          }
+
+          html += `</div>`;
+        });
+
+        if (features.length > 10) {
+          html += `<div class="info-item">... and ${features.length - 10} more</div>`;
+        }
+
+        document.getElementById("results").innerHTML = html;
+        document.getElementById("resultsPanel").style.display = "block";
+      }
+
+      function displayNoResults(message) {
+        document.getElementById("results").innerHTML =
+          `<div class="info-item">${message}</div>`;
+        document.getElementById("resultsPanel").style.display = "block";
+      }
+    });
+  </script>
+</body>
+
+</html>
