@@ -98,6 +98,7 @@ nav:
     - GIS:
       - Google:
         - Google Street View: "GIS/Google/google_street_view.ipynb"
+        - Tree Canopy Dashboard: "GIS/tree_canopy_final.html"
       - ESRI:
         - Dynamic Dashboard: "GIS/Python-automation-tutorial.ipynb"
         - Database Connection: "GIS/esri/arcsde_intro.ipynb"

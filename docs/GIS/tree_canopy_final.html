@@ -24,7 +24,9 @@
       background: #f3f4f6;
       overflow: hidden;
     }
-
+    .esri-attribution__sources, .esri-attribution__powered-by{
+      display: none;
+    }
     .dashboard-container {
       display: flex;
       flex-direction: column;
@@ -603,7 +605,7 @@
 
       // ✅ Your service URL - now compatible with Web Mercator basemaps!
       const serviceUrl =
-        "https://tiles.arcgis.com/tiles/cTNi34MxOdcfum3A/arcgis/rest/services/TreeCanopy_Oklahoma_10m_WGS84/MapServer";
+        "https://tiles.arcgis.com/tiles/cTNi34MxOdcfum3A/arcgis/rest/services/TreeCanopy_Oklahoma_10m_cold2hot/MapServer";
 
       const treeCanopyLayer = new TileLayer({
         url: serviceUrl,
